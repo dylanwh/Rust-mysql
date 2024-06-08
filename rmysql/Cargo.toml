@@ -1,0 +1,9 @@
+[package]
+name = "rmysql"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+flate2 = "1.0.30"
+mysql = { version = "25.0.1", default-features = false, features = ["rustls", "webpki", "minimal-rust", "webpki-roots", "rustls-tls"] }
+rustls = "0.23.9"
