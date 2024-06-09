@@ -1,8 +1,8 @@
 // expose the rust mysql crate as a C API
 
-use std::ffi::CStr;
+use std::ffi::{c_char, CStr};
 
-use mysql::{Conn, Opts};
+use mysql::{prelude::Queryable, Conn, Opts, Statement};
 
 // a C enum for error codes
 #[repr(C)]
@@ -18,8 +18,15 @@ pub enum ErrorCode {
 #[repr(C)]
 pub struct Error {
     code: ErrorCode,
-    message: [i8; 256],
+    message: [c_char; 256],
 }
+
+pub struct ConnHandle {
+    conn: Conn,
+    txn: Option<mysql::Transaction<'static>>,
+}
+
+pub struct StatementHandle(Statement);
 
 /// Connect to a MySQL database
 ///
@@ -27,11 +34,11 @@ pub struct Error {
 /// All input pointers must be valid C strings
 #[no_mangle]
 pub unsafe extern "C" fn rmysql_connect(
-    dsn: *const i8,
-    user: *const i8,
-    password: *const i8,
+    dsn: *const c_char,
+    user: *const c_char,
+    password: *const c_char,
     error: *mut Error,
-) -> *mut Conn {
+) -> *mut ConnHandle {
     use ErrorCode::*;
 
     let Some(dsn) = Utf8Error.check(CStr::from_ptr(dsn).to_str(), error) else {
@@ -52,19 +59,47 @@ pub unsafe extern "C" fn rmysql_connect(
         return std::ptr::null_mut();
     };
 
-    Box::into_raw(Box::new(conn))
+    Box::into_raw(Box::new(ConnHandle { conn, txn: None }))
 }
 
 /// Disconnect from a MySQL database
 /// # Safety
 /// The pointer must be valid
 #[no_mangle]
-pub unsafe extern "C" fn rmysql_disconnect(conn: *mut Conn) {
+pub unsafe extern "C" fn rmysql_disconnect(conn: *mut ConnHandle) {
     if !conn.is_null() {
-        let _ = Box::from_raw(conn);
+        let ConnHandle { conn: _, txn: _ } = *Box::from_raw(conn);
     }
 }
 
+#[repr(C)]
+pub struct Attribs {
+    debug: bool,
+}
+
+/// Prepare a statement
+/// # Safety
+/// All input pointers must be valid
+#[no_mangle]
+pub unsafe extern "C" fn rmysql_prepare(
+    conn: *mut ConnHandle,
+    query: *const c_char,
+    _attribs: *const Attribs,
+    error: *mut Error,
+) -> *mut StatementHandle {
+    use ErrorCode::*;
+
+    let ConnHandle { conn, txn: _ } = conn.as_mut().unwrap();
+    let Some(query) = Utf8Error.check(CStr::from_ptr(query).to_str(), error) else {
+        return std::ptr::null_mut();
+    };
+
+    let Some(statement) = PrepareError.check(conn.prep(query), error) else {
+        return std::ptr::null_mut();
+    };
+
+    Box::into_raw(Box::new(StatementHandle(statement)))
+}
 
 impl ErrorCode {
     fn check<T, E>(self, result: Result<T, E>, error: *mut Error) -> Option<T>
@@ -76,7 +111,7 @@ impl ErrorCode {
             Err(e) => {
                 let message = format!("{}", e);
                 let message = message.as_bytes();
-                let message = message.iter().map(|&b| b as i8).collect::<Vec<_>>();
+                let message = message.iter().map(|&b| b as c_char).collect::<Vec<_>>();
                 let message = message.as_slice();
                 unsafe {
                     (*error).code = self;
@@ -88,8 +123,50 @@ impl ErrorCode {
     }
 }
 
+
+/// begin_work()
+#[no_mangle]
+pub unsafe extern "C" fn rmysql_begin_work(conn: *mut ConnHandle) -> {
+    let ConnHandle { conn, mut txn } = conn.as_mut().unwrap();
+}
+
+
 #[allow(unused)]
 fn dsn_to_url(dsn: &str, user: &str, password: &str) -> String {
     let dsn = dsn.strip_prefix("dbi:rmysql:").unwrap_or(dsn);
-    format!("mysql://{}:{}@{}", user, password, dsn)
+    let mut database = None;
+    let mut host = "localhost";
+    let mut port = None;
+    let mut pairs = String::new();
+    for pair in dsn.split(';') {
+        if let Some((key, value)) = pair.split_once('=') {
+            match key {
+                "database" => {
+                    database.replace(value);
+                }
+                "host" => {
+                    host = value;
+                }
+                "port" => {
+                    port.replace(value);
+                }
+                _ if pairs.is_empty() => {
+                    pairs.push('?');
+                    pairs.push_str(pair);
+                }
+                _ => {
+                    pairs.push('&');
+                    pairs.push_str(pair);
+                }
+            }
+        }
+    }
+
+    let opt_port = port.map(|port| format!(":{}", port)).unwrap_or_default();
+    let opt_database = database
+        .map(|database| format!("/{}", database))
+        .unwrap_or_default();
+    let s = format!("mysql://{user}:{password}@{host}{opt_port}{opt_database}{pairs}");
+    eprintln!("dsn_to_url: {}", s);
+    s
 }
