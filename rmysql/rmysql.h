@@ -9,6 +9,7 @@ typedef enum ErrorCode {
   UrlError = 2,
   ConnectionError = 3,
   PrepareError = 4,
+  TransactionError = 5,
 } ErrorCode;
 
 typedef struct ConnHandle ConnHandle;
@@ -17,7 +18,7 @@ typedef struct StatementHandle StatementHandle;
 
 typedef struct Error {
   enum ErrorCode code;
-  int8_t message[256];
+  char message[256];
 } Error;
 
 typedef struct Attribs {
@@ -48,6 +49,16 @@ void rmysql_disconnect(struct ConnHandle *conn);
  * All input pointers must be valid
  */
 struct StatementHandle *rmysql_prepare(struct ConnHandle *conn,
-                                       const int8_t *query,
+                                       const char *query,
                                        const struct Attribs *_attribs,
                                        struct Error *error);
+
+/**
+ * free a statement
+ */
+void rmysql_statement_destroy(struct StatementHandle *statement);
+
+/**
+ * begin_work()
+ */
+bool rmysql_begin_work(struct ConnHandle *conn, struct Error *error);

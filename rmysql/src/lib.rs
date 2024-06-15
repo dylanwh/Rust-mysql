@@ -12,6 +12,7 @@ pub enum ErrorCode {
     UrlError = 2,
     ConnectionError = 3,
     PrepareError = 4,
+    TransactionError = 5,
 }
 
 // a structure with an error code and a message
@@ -68,7 +69,9 @@ pub unsafe extern "C" fn rmysql_connect(
 #[no_mangle]
 pub unsafe extern "C" fn rmysql_disconnect(conn: *mut ConnHandle) {
     if !conn.is_null() {
-        let ConnHandle { conn: _, txn: _ } = *Box::from_raw(conn);
+        let ConnHandle { conn, txn } = *Box::from_raw(conn);
+        drop(txn);
+        drop(conn);
     }
 }
 
@@ -101,6 +104,14 @@ pub unsafe extern "C" fn rmysql_prepare(
     Box::into_raw(Box::new(StatementHandle(statement)))
 }
 
+/// free a statement
+#[no_mangle]
+pub unsafe extern "C" fn rmysql_statement_destroy(statement: *mut StatementHandle) {
+    if !statement.is_null() {
+        drop(Box::from_raw(statement));
+    }
+}
+
 impl ErrorCode {
     fn check<T, E>(self, result: Result<T, E>, error: *mut Error) -> Option<T>
     where
@@ -126,8 +137,18 @@ impl ErrorCode {
 
 /// begin_work()
 #[no_mangle]
-pub unsafe extern "C" fn rmysql_begin_work(conn: *mut ConnHandle) -> {
-    let ConnHandle { conn, mut txn } = conn.as_mut().unwrap();
+pub extern "C" fn rmysql_begin_work(conn: *mut ConnHandle, error: *mut Error) -> bool {
+    use ErrorCode::*;
+
+    let ch = unsafe { conn.as_mut().unwrap() };
+    let txn_opts = mysql::TxOpts::default();
+    let Some(txn) = TransactionError.check(ch.conn.start_transaction(txn_opts), error) else {
+        return false;
+    };
+    ch.txn.replace(txn);
+
+    true
+
 }
 
 
