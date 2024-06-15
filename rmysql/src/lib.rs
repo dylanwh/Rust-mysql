@@ -4,7 +4,6 @@ use std::ffi::{c_char, CStr};
 
 use mysql::{prelude::Queryable, Conn, Opts, Statement};
 
-// a C enum for error codes
 #[repr(C)]
 pub enum ErrorCode {
     Success = 0,
@@ -15,7 +14,6 @@ pub enum ErrorCode {
     TransactionError = 5,
 }
 
-// a structure with an error code and a message
 #[repr(C)]
 pub struct Error {
     code: ErrorCode,
@@ -92,7 +90,10 @@ pub unsafe extern "C" fn rmysql_prepare(
 ) -> *mut StatementHandle {
     use ErrorCode::*;
 
-    let ConnHandle { conn, txn: _ } = conn.as_mut().unwrap();
+    let Some(ConnHandle { conn, txn: _ }) = conn.as_mut() else {
+        ConnectionError.set(error, "null pointer");
+        return std::ptr::null_mut();
+    };
     let Some(query) = Utf8Error.check(CStr::from_ptr(query).to_str(), error) else {
         return std::ptr::null_mut();
     };
@@ -105,6 +106,9 @@ pub unsafe extern "C" fn rmysql_prepare(
 }
 
 /// free a statement
+///
+/// # Safety
+/// The pointer must be valid and must not be used after this function is called
 #[no_mangle]
 pub unsafe extern "C" fn rmysql_statement_destroy(statement: *mut StatementHandle) {
     if !statement.is_null() {
@@ -113,6 +117,16 @@ pub unsafe extern "C" fn rmysql_statement_destroy(statement: *mut StatementHandl
 }
 
 impl ErrorCode {
+    fn set(self, error: *mut Error, message: &str) {
+        let message = message.as_bytes();
+        let message = message.iter().map(|&b| b as c_char).collect::<Vec<_>>();
+        let message = message.as_slice();
+        unsafe {
+            (*error).code = self;
+            (*error).message[..message.len()].copy_from_slice(message);
+        }
+    }
+
     fn check<T, E>(self, result: Result<T, E>, error: *mut Error) -> Option<T>
     where
         E: std::fmt::Display,
@@ -120,27 +134,24 @@ impl ErrorCode {
         match result {
             Ok(value) => Some(value),
             Err(e) => {
-                let message = format!("{}", e);
-                let message = message.as_bytes();
-                let message = message.iter().map(|&b| b as c_char).collect::<Vec<_>>();
-                let message = message.as_slice();
-                unsafe {
-                    (*error).code = self;
-                    (*error).message[..message.len()].copy_from_slice(message);
-                }
+                self.set(error, &format!("{}", e));
                 None
             }
         }
     }
 }
 
-
 /// begin_work()
+/// # Safety
+/// When calling this method, the connection must be a pointer returned by rmysql_connect
 #[no_mangle]
-pub extern "C" fn rmysql_begin_work(conn: *mut ConnHandle, error: *mut Error) -> bool {
+pub unsafe extern "C" fn rmysql_begin_work(conn: *mut ConnHandle, error: *mut Error) -> bool {
     use ErrorCode::*;
 
-    let ch = unsafe { conn.as_mut().unwrap() };
+    let Some(ch) = conn.as_mut() else {
+        TransactionError.set(error, "null pointer");
+        return false;
+    };
     let txn_opts = mysql::TxOpts::default();
     let Some(txn) = TransactionError.check(ch.conn.start_transaction(txn_opts), error) else {
         return false;
@@ -148,9 +159,43 @@ pub extern "C" fn rmysql_begin_work(conn: *mut ConnHandle, error: *mut Error) ->
     ch.txn.replace(txn);
 
     true
-
 }
 
+/// commit()
+/// # Safety
+/// When calling this method, the connection must be a pointer returned by rmysql_connect
+#[no_mangle]
+pub unsafe extern "C" fn rmysql_commit(conn: *mut ConnHandle, error: *mut Error) -> bool {
+    use ErrorCode::*;
+
+    let Some(ch) = conn.as_mut() else {
+        TransactionError.set(error, "null pointer");
+        return false;
+    };
+    let Some(txn) = ch.txn.take() else {
+        TransactionError.set(error, "no transaction");
+        return false;
+    };
+    TransactionError.check(txn.commit(), error).is_some()
+}
+
+/// rollback()
+/// # Safety
+/// When calling this method, the connection must be a pointer returned by rmysql_connect
+#[no_mangle]
+pub unsafe extern "C" fn rmysql_rollback(conn: *mut ConnHandle, error: *mut Error) -> bool {
+    use ErrorCode::*;
+
+    let Some(ch) = conn.as_mut() else {
+        TransactionError.set(error, "null pointer");
+        return false;
+    };
+    let Some(txn) = ch.txn.take() else {
+        TransactionError.set(error, "no transaction");
+        return false;
+    };
+    TransactionError.check(txn.rollback(), error).is_some()
+}
 
 #[allow(unused)]
 fn dsn_to_url(dsn: &str, user: &str, password: &str) -> String {
