@@ -8,6 +8,10 @@ use FFI::Platypus::Lang::C;
 use FFI::Platypus::Lang::Rust;
 use FFI::CheckLib qw( find_lib_or_die );
 use File::Basename qw( dirname );
+use Exporter qw( import );
+
+our @EXPORT = qw( );
+our %EXPORT_TAGS = ( all => \@EXPORT );
 
 BEGIN {
     # FIXME: FFI::Platypus::Lang::Rust doesn't have enum.
@@ -27,34 +31,37 @@ my $ffi = FFI::Platypus->new( api => 2, lang => 'Rust' );
 $ffi->bundle;
 
 
+$ffi->type(enum => 'ErrorCode');
 
-$ffi->load_custom_type('::Enum',
-    'ErrorCode',
-    [ Success => 0 ],
-    [ Utf8Error => 1 ],
-    [ UrlError => 2 ],
-    [ ConnectionError => 3 ],
-    [ PrepareError => 4 ],
-    [ TransactionError => 5 ],
-    );
+use constant NoError => 0;
+use constant Utf8Error => 1;
+use constant UrlError => 2;
+use constant ConnectionError => 3;
+use constant PrepareError => 4;
+use constant TransactionError => 5;
+push @{ $EXPORT_TAGS{all} }, 'NoError', 'Utf8Error', 'UrlError', 'ConnectionError', 'PrepareError', 'TransactionError';
+
 
 $ffi->type(opaque => 'ConnHandle');
 $ffi->type(opaque => 'StatementHandle');
 
 
 DBD::rmysql::Error->init_record_layout($ffi);
-$ffi->type("record(DBD::rmysql::Error)*" => 'Error');
+$ffi->type("record(DBD::rmysql::Error)" => 'Error');
 DBD::rmysql::Attribs->init_record_layout($ffi);
-$ffi->type("record(DBD::rmysql::Attribs)*" => 'Attribs');
+$ffi->type("record(DBD::rmysql::Attribs)" => 'Attribs');
 
 
-$ffi->attach( rmysql_connect => ['string', 'string', 'string', 'Error'] => 'ConnHandle' );
+$ffi->attach( rmysql_connect => ['string', 'string', 'string', 'Error*'] => 'ConnHandle' );
 $ffi->attach( rmysql_disconnect => ['ConnHandle'] => 'void' );
-$ffi->attach( rmysql_prepare => ['ConnHandle', 'string', 'Attribs', 'Error'] => 'StatementHandle' );
+$ffi->attach( rmysql_prepare => ['ConnHandle', 'string', 'Attribs*', 'Error*'] => 'StatementHandle' );
 $ffi->attach( rmysql_statement_destroy => ['StatementHandle'] => 'void' );
-$ffi->attach( rmysql_begin_work => ['ConnHandle', 'Error'] => 'bool' );
-$ffi->attach( rmysql_commit => ['ConnHandle', 'Error'] => 'bool' );
-$ffi->attach( rmysql_rollback => ['ConnHandle', 'Error'] => 'bool' );
+$ffi->attach( rmysql_begin_work => ['ConnHandle', 'Error*'] => 'bool' );
+$ffi->attach( rmysql_commit => ['ConnHandle', 'Error*'] => 'bool' );
+$ffi->attach( rmysql_rollback => ['ConnHandle', 'Error*'] => 'bool' );
 
+
+
+push @{ $EXPORT_TAGS{all} }, 'rmysql_connect', 'rmysql_disconnect', 'rmysql_prepare', 'rmysql_statement_destroy', 'rmysql_begin_work', 'rmysql_commit', 'rmysql_rollback';
 
 1; 

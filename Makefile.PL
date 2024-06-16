@@ -18,7 +18,6 @@ WriteMakefile($fbmm->mm_args(
     PREREQ_PM => {
         'FFI::Platypus'             => '1.00',
         'FFI::Platypus::Lang::Rust' => '0.07',
-        'FFI::Platypus::Type::Enum' => '0.06',
     },
 ));
 

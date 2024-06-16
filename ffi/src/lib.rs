@@ -6,7 +6,7 @@ use mysql::{prelude::Queryable, Conn, Opts, Statement};
 
 #[repr(C)]
 pub enum ErrorCode {
-    Success = 0,
+    NoError = 0,
     Utf8Error = 1,
     UrlError = 2,
     ConnectionError = 3,
@@ -233,6 +233,5 @@ fn dsn_to_url(dsn: &str, user: &str, password: &str) -> String {
         .map(|database| format!("/{}", database))
         .unwrap_or_default();
     let s = format!("mysql://{user}:{password}@{host}{opt_port}{opt_database}{pairs}");
-    eprintln!("dsn_to_url: {}", s);
     s
 }
