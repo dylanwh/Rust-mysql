@@ -765,6 +765,7 @@ dependencies = [
  "flate2",
  "mysql",
  "rustls",
+ "syn",
 ]
 
 [[package]]
