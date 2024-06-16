@@ -8,9 +8,9 @@ my $fbmm = FFI::Build::MM->new;
 
 WriteMakefile($fbmm->mm_args(
     ABSTRACT       => 'FFI extension for rmysql',
-    DISTNAME       => 'DBD-rmysql',
-    NAME           => 'DBD::rmysql',
-    VERSION_FROM   => 'lib/DBD/rmysql.pm',
+    DISTNAME       => 'Rust-mysql',
+    NAME           => 'Rust::mysql',
+    VERSION_FROM   => 'lib/Rust/mysql.pm',
     BUILD_REQUIRES => {
         'FFI::Build::MM'          => '1.00',
         'FFI::Build::File::Cargo' => '0.07',

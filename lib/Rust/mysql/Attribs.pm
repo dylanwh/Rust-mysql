@@ -1,4 +1,4 @@
-package DBD::rmysql::Attribs;
+package Rust::mysql::Attribs;
 
 use FFI::Platypus 2.00;
 use FFI::Platypus::Record;

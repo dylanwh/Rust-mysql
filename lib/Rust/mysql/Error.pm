@@ -1,4 +1,4 @@
-package DBD::rmysql::Error;
+package Rust::mysql::Error;
 
 use FFI::Platypus 2.00;
 use FFI::Platypus::Record;
