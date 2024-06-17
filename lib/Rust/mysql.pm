@@ -30,16 +30,6 @@ my $ffi = FFI::Platypus->new( api => 2, lang => 'Rust' );
 $ffi->bundle;
 
 
-$ffi->type(enum => 'ErrorCode');
-
-use constant NoError => 0;
-use constant Utf8Error => 1;
-use constant UrlError => 2;
-use constant ConnectionError => 3;
-use constant PrepareError => 4;
-use constant TransactionError => 5;
-push @{ $EXPORT_TAGS{all} }, 'NoError', 'Utf8Error', 'UrlError', 'ConnectionError', 'PrepareError', 'TransactionError';
-
 
 $ffi->type(opaque => 'RustMysqlConn');
 $ffi->type(opaque => 'RustMysqlStatement');
@@ -52,7 +42,7 @@ $ffi->type("record(Rust::mysql::Error)" => 'Error');
 $ffi->attach( rust_mysql_connect => ['string', 'string', 'string', 'Error*'] => 'RustMysqlConn' );
 $ffi->attach( rust_mysql_disconnect => ['RustMysqlConn'] => 'void' );
 $ffi->attach( rust_mysql_prepare => ['RustMysqlConn', 'string', 'Error*'] => 'RustMysqlStatement' );
-$ffi->attach( rust_mysql_execute => ['RustMysqlStatement', 'string*', 'usize', 'Error*'] => 'void' );
+$ffi->attach( rust_mysql_execute => ['RustMysqlStatement', 'string[]', 'usize', 'Error*'] => 'void' );
 $ffi->attach( rust_mysql_statement_destroy => ['RustMysqlStatement'] => 'void' );
 $ffi->attach( rust_mysql_begin_work => ['RustMysqlConn', 'Error*'] => 'bool' );
 $ffi->attach( rust_mysql_commit => ['RustMysqlConn', 'Error*'] => 'bool' );

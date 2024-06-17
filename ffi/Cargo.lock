@@ -651,6 +651,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
+name = "plbindgen_macros"
+version = "0.1.0"
+source = "git+https://github.com/dylanwh/plbindgen_macros#f6ccd8faee0ba3a5bef03b8940b02bbddf406e86"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "plbindgen_types"
+version = "0.1.0"
+source = "git+file:///Users/dylan/Git/dylanwh/plbindgen_types/#6a2a38fb104400fc1ed6ebd01c98388e5c92d62d"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -764,6 +778,8 @@ version = "0.1.0"
 dependencies = [
  "flate2",
  "mysql",
+ "plbindgen_macros",
+ "plbindgen_types",
  "rustls",
  "syn",
 ]
