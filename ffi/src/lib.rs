@@ -2,7 +2,8 @@
 
 use std::ffi::{c_char, CStr};
 
-use mysql::{prelude::Queryable, Conn, Opts, Statement};
+use mysql::{params, prelude::Queryable, Conn, Opts, Statement};
+
 
 #[repr(C)]
 pub enum ErrorCode {
@@ -108,6 +109,24 @@ pub unsafe extern "C" fn rust_mysql_prepare(
     };
 
     Box::into_raw(Box::new(RustMysqlStatement(statement)))
+}
+
+/// Execute a statement
+/// # Safety
+/// All input pointers must be valid
+#[allow(unused)]
+#[no_mangle]
+pub unsafe extern "C" fn rust_mysql_execute(
+    sth: *mut RustMysqlStatement,
+
+    #[platypus(array)]
+    params: *const *const c_char,
+    params_len: usize,
+    error: *mut Error,
+){
+    let params = std::slice::from_raw_parts(params, params_len);
+
+    todo!()
 }
 
 /// free a statement

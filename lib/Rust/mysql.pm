@@ -52,6 +52,7 @@ $ffi->type("record(Rust::mysql::Error)" => 'Error');
 $ffi->attach( rust_mysql_connect => ['string', 'string', 'string', 'Error*'] => 'RustMysqlConn' );
 $ffi->attach( rust_mysql_disconnect => ['RustMysqlConn'] => 'void' );
 $ffi->attach( rust_mysql_prepare => ['RustMysqlConn', 'string', 'Error*'] => 'RustMysqlStatement' );
+$ffi->attach( rust_mysql_execute => ['RustMysqlStatement', 'string*', 'usize', 'Error*'] => 'void' );
 $ffi->attach( rust_mysql_statement_destroy => ['RustMysqlStatement'] => 'void' );
 $ffi->attach( rust_mysql_begin_work => ['RustMysqlConn', 'Error*'] => 'bool' );
 $ffi->attach( rust_mysql_commit => ['RustMysqlConn', 'Error*'] => 'bool' );
@@ -60,6 +61,6 @@ $ffi->attach( rust_mysql_in_transaction => ['RustMysqlConn'] => 'bool' );
 
 
 
-push @{ $EXPORT_TAGS{all} }, 'rust_mysql_connect', 'rust_mysql_disconnect', 'rust_mysql_prepare', 'rust_mysql_statement_destroy', 'rust_mysql_begin_work', 'rust_mysql_commit', 'rust_mysql_rollback', 'rust_mysql_in_transaction';
+push @{ $EXPORT_TAGS{all} }, 'rust_mysql_connect', 'rust_mysql_disconnect', 'rust_mysql_prepare', 'rust_mysql_execute', 'rust_mysql_statement_destroy', 'rust_mysql_begin_work', 'rust_mysql_commit', 'rust_mysql_rollback', 'rust_mysql_in_transaction';
 
 1; 
