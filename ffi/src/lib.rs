@@ -20,24 +20,24 @@ pub struct Error {
     message: [c_char; 256],
 }
 
-pub struct ConnHandle {
+pub struct RustMysqlConn {
     conn: Conn,
     txn: Option<mysql::Transaction<'static>>,
 }
 
-pub struct StatementHandle(Statement);
+pub struct RustMysqlStatement(Statement);
 
 /// Connect to a MySQL database
 ///
 /// # Safety
 /// All input pointers must be valid C strings
 #[no_mangle]
-pub unsafe extern "C" fn rmysql_connect(
+pub unsafe extern "C" fn rust_mysql_connect(
     dsn: *const c_char,
     user: *const c_char,
     password: *const c_char,
     error: *mut Error,
-) -> *mut ConnHandle {
+) -> *mut RustMysqlConn {
     use ErrorCode::*;
 
     let Some(dsn) = Utf8Error.check(CStr::from_ptr(dsn).to_str(), error) else {
@@ -58,39 +58,33 @@ pub unsafe extern "C" fn rmysql_connect(
         return std::ptr::null_mut();
     };
 
-    Box::into_raw(Box::new(ConnHandle { conn, txn: None }))
+    Box::into_raw(Box::new(RustMysqlConn { conn, txn: None }))
 }
 
 /// Disconnect from a MySQL database
 /// # Safety
 /// The pointer must be valid
 #[no_mangle]
-pub unsafe extern "C" fn rmysql_disconnect(conn: *mut ConnHandle) {
+pub unsafe extern "C" fn rust_mysql_disconnect(conn: *mut RustMysqlConn) {
     if !conn.is_null() {
-        let ConnHandle { conn, txn } = *Box::from_raw(conn);
+        let RustMysqlConn { conn, txn } = *Box::from_raw(conn);
         drop(txn);
         drop(conn);
     }
-}
-
-#[repr(C)]
-pub struct Attribs {
-    debug: bool,
 }
 
 /// Prepare a statement
 /// # Safety
 /// All input pointers must be valid
 #[no_mangle]
-pub unsafe extern "C" fn rmysql_prepare(
-    conn: *mut ConnHandle,
+pub unsafe extern "C" fn rust_mysql_prepare(
+    conn: *mut RustMysqlConn,
     query: *const c_char,
-    _attribs: *const Attribs,
     error: *mut Error,
-) -> *mut StatementHandle {
+) -> *mut RustMysqlStatement {
     use ErrorCode::*;
 
-    let Some(ConnHandle { conn, txn: _ }) = conn.as_mut() else {
+    let Some(RustMysqlConn { conn, txn: _ }) = conn.as_mut() else {
         ConnectionError.set(error, "null pointer");
         return std::ptr::null_mut();
     };
@@ -102,7 +96,7 @@ pub unsafe extern "C" fn rmysql_prepare(
         return std::ptr::null_mut();
     };
 
-    Box::into_raw(Box::new(StatementHandle(statement)))
+    Box::into_raw(Box::new(RustMysqlStatement(statement)))
 }
 
 /// free a statement
@@ -110,7 +104,7 @@ pub unsafe extern "C" fn rmysql_prepare(
 /// # Safety
 /// The pointer must be valid and must not be used after this function is called
 #[no_mangle]
-pub unsafe extern "C" fn rmysql_statement_destroy(statement: *mut StatementHandle) {
+pub unsafe extern "C" fn rust_mysql_statement_destroy(statement: *mut RustMysqlStatement) {
     if !statement.is_null() {
         drop(Box::from_raw(statement));
     }
@@ -143,9 +137,9 @@ impl ErrorCode {
 
 /// begin_work()
 /// # Safety
-/// When calling this method, the connection must be a pointer returned by rmysql_connect
+/// When calling this method, the connection must be a pointer returned by rust_mysql_connect
 #[no_mangle]
-pub unsafe extern "C" fn rmysql_begin_work(conn: *mut ConnHandle, error: *mut Error) -> bool {
+pub unsafe extern "C" fn rust_mysql_begin_work(conn: *mut RustMysqlConn, error: *mut Error) -> bool {
     use ErrorCode::*;
 
     let Some(ch) = conn.as_mut() else {
@@ -163,9 +157,9 @@ pub unsafe extern "C" fn rmysql_begin_work(conn: *mut ConnHandle, error: *mut Er
 
 /// commit()
 /// # Safety
-/// When calling this method, the connection must be a pointer returned by rmysql_connect
+/// When calling this method, the connection must be a pointer returned by rust_mysql_connect
 #[no_mangle]
-pub unsafe extern "C" fn rmysql_commit(conn: *mut ConnHandle, error: *mut Error) -> bool {
+pub unsafe extern "C" fn rust_mysql_commit(conn: *mut RustMysqlConn, error: *mut Error) -> bool {
     use ErrorCode::*;
 
     let Some(ch) = conn.as_mut() else {
@@ -181,9 +175,9 @@ pub unsafe extern "C" fn rmysql_commit(conn: *mut ConnHandle, error: *mut Error)
 
 /// rollback()
 /// # Safety
-/// When calling this method, the connection must be a pointer returned by rmysql_connect
+/// When calling this method, the connection must be a pointer returned by rust_mysql_connect
 #[no_mangle]
-pub unsafe extern "C" fn rmysql_rollback(conn: *mut ConnHandle, error: *mut Error) -> bool {
+pub unsafe extern "C" fn rust_mysql_rollback(conn: *mut RustMysqlConn, error: *mut Error) -> bool {
     use ErrorCode::*;
 
     let Some(ch) = conn.as_mut() else {

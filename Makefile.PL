@@ -7,7 +7,7 @@ my $fbmm = FFI::Build::MM->new;
 
 
 WriteMakefile($fbmm->mm_args(
-    ABSTRACT       => 'FFI extension for rmysql',
+    ABSTRACT       => 'FFI extension for rust_mysql',
     DISTNAME       => 'Rust-mysql',
     NAME           => 'Rust::mysql',
     VERSION_FROM   => 'lib/Rust/mysql.pm',

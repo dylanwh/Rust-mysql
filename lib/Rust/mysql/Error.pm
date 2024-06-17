@@ -7,7 +7,7 @@ sub init_record_layout {
     my($class, $ffi) = @_;
 
   record_layout_1($ffi, qw(
-      enum code
+      ErrorCode code
       string(256) message
   ));
 }

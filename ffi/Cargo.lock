@@ -759,7 +759,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rmysql"
+name = "rust_mysql"
 version = "0.1.0"
 dependencies = [
  "flate2",

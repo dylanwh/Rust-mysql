@@ -24,7 +24,6 @@ BEGIN {
 our $VERSION = '0.1.0';
 
 use Rust::mysql::Error;
-use Rust::mysql::Attribs;
 
 
 my $ffi = FFI::Platypus->new( api => 2, lang => 'Rust' );
@@ -42,26 +41,24 @@ use constant TransactionError => 5;
 push @{ $EXPORT_TAGS{all} }, 'NoError', 'Utf8Error', 'UrlError', 'ConnectionError', 'PrepareError', 'TransactionError';
 
 
-$ffi->type(opaque => 'ConnHandle');
-$ffi->type(opaque => 'StatementHandle');
+$ffi->type(opaque => 'RustMysqlConn');
+$ffi->type(opaque => 'RustMysqlStatement');
 
 
 Rust::mysql::Error->init_record_layout($ffi);
 $ffi->type("record(Rust::mysql::Error)" => 'Error');
-Rust::mysql::Attribs->init_record_layout($ffi);
-$ffi->type("record(Rust::mysql::Attribs)" => 'Attribs');
 
 
-$ffi->attach( rmysql_connect => ['string', 'string', 'string', 'Error*'] => 'ConnHandle' );
-$ffi->attach( rmysql_disconnect => ['ConnHandle'] => 'void' );
-$ffi->attach( rmysql_prepare => ['ConnHandle', 'string', 'Attribs*', 'Error*'] => 'StatementHandle' );
-$ffi->attach( rmysql_statement_destroy => ['StatementHandle'] => 'void' );
-$ffi->attach( rmysql_begin_work => ['ConnHandle', 'Error*'] => 'bool' );
-$ffi->attach( rmysql_commit => ['ConnHandle', 'Error*'] => 'bool' );
-$ffi->attach( rmysql_rollback => ['ConnHandle', 'Error*'] => 'bool' );
+$ffi->attach( rust_mysql_connect => ['string', 'string', 'string', 'Error*'] => 'RustMysqlConn' );
+$ffi->attach( rust_mysql_disconnect => ['RustMysqlConn'] => 'void' );
+$ffi->attach( rust_mysql_prepare => ['RustMysqlConn', 'string', 'Error*'] => 'RustMysqlStatement' );
+$ffi->attach( rust_mysql_statement_destroy => ['RustMysqlStatement'] => 'void' );
+$ffi->attach( rust_mysql_begin_work => ['RustMysqlConn', 'Error*'] => 'bool' );
+$ffi->attach( rust_mysql_commit => ['RustMysqlConn', 'Error*'] => 'bool' );
+$ffi->attach( rust_mysql_rollback => ['RustMysqlConn', 'Error*'] => 'bool' );
 
 
 
-push @{ $EXPORT_TAGS{all} }, 'rmysql_connect', 'rmysql_disconnect', 'rmysql_prepare', 'rmysql_statement_destroy', 'rmysql_begin_work', 'rmysql_commit', 'rmysql_rollback';
+push @{ $EXPORT_TAGS{all} }, 'rust_mysql_connect', 'rust_mysql_disconnect', 'rust_mysql_prepare', 'rust_mysql_statement_destroy', 'rust_mysql_begin_work', 'rust_mysql_commit', 'rust_mysql_rollback';
 
 1; 
