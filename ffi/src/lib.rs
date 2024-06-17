@@ -40,6 +40,11 @@ pub unsafe extern "C" fn rust_mysql_connect(
 ) -> *mut RustMysqlConn {
     use ErrorCode::*;
 
+    if error.is_null() {
+        eprintln!("in rust_mysql_connect, error is null");
+        return std::ptr::null_mut();
+    }
+
     let Some(dsn) = Utf8Error.check(CStr::from_ptr(dsn).to_str(), error) else {
         return std::ptr::null_mut();
     };
@@ -67,7 +72,8 @@ pub unsafe extern "C" fn rust_mysql_connect(
 #[no_mangle]
 pub unsafe extern "C" fn rust_mysql_disconnect(conn: *mut RustMysqlConn) {
     if !conn.is_null() {
-        let RustMysqlConn { conn, txn } = *Box::from_raw(conn);
+        let ptr = Box::from_raw(conn);
+        let RustMysqlConn { conn, txn } = *ptr;
         drop(txn);
         drop(conn);
     }
@@ -83,6 +89,11 @@ pub unsafe extern "C" fn rust_mysql_prepare(
     error: *mut Error,
 ) -> *mut RustMysqlStatement {
     use ErrorCode::*;
+
+    if error.is_null() {
+        eprintln!("in rust_mysql_prepare, error is null");
+        return std::ptr::null_mut();
+    }
 
     let Some(RustMysqlConn { conn, txn: _ }) = conn.as_mut() else {
         ConnectionError.set(error, "null pointer");
@@ -142,6 +153,11 @@ impl ErrorCode {
 pub unsafe extern "C" fn rust_mysql_begin_work(conn: *mut RustMysqlConn, error: *mut Error) -> bool {
     use ErrorCode::*;
 
+    if error.is_null() {
+        eprintln!("in rust_mysql_rollback, error is null");
+        return false;
+    }
+
     let Some(ch) = conn.as_mut() else {
         TransactionError.set(error, "null pointer");
         return false;
@@ -162,6 +178,11 @@ pub unsafe extern "C" fn rust_mysql_begin_work(conn: *mut RustMysqlConn, error: 
 pub unsafe extern "C" fn rust_mysql_commit(conn: *mut RustMysqlConn, error: *mut Error) -> bool {
     use ErrorCode::*;
 
+    if error.is_null() {
+        eprintln!("in rust_mysql_commit, error is null");
+        return false;
+    }
+
     let Some(ch) = conn.as_mut() else {
         TransactionError.set(error, "null pointer");
         return false;
@@ -180,6 +201,11 @@ pub unsafe extern "C" fn rust_mysql_commit(conn: *mut RustMysqlConn, error: *mut
 pub unsafe extern "C" fn rust_mysql_rollback(conn: *mut RustMysqlConn, error: *mut Error) -> bool {
     use ErrorCode::*;
 
+    if error.is_null() {
+        eprintln!("in rust_mysql_rollback, error is null");
+        return false;
+    }
+
     let Some(ch) = conn.as_mut() else {
         TransactionError.set(error, "null pointer");
         return false;
@@ -189,6 +215,14 @@ pub unsafe extern "C" fn rust_mysql_rollback(conn: *mut RustMysqlConn, error: *m
         return false;
     };
     TransactionError.check(txn.rollback(), error).is_some()
+}
+
+/// in_transaction()
+/// # Safety
+/// When calling this method, the connection must be a pointer returned by rust_mysql_connect
+#[no_mangle]
+pub unsafe extern "C" fn rust_mysql_in_transaction(conn: *mut RustMysqlConn) -> bool {
+    conn.as_ref().map_or(false, |ch| ch.txn.is_some())
 }
 
 #[allow(unused)]

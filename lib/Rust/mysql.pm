@@ -56,9 +56,10 @@ $ffi->attach( rust_mysql_statement_destroy => ['RustMysqlStatement'] => 'void' )
 $ffi->attach( rust_mysql_begin_work => ['RustMysqlConn', 'Error*'] => 'bool' );
 $ffi->attach( rust_mysql_commit => ['RustMysqlConn', 'Error*'] => 'bool' );
 $ffi->attach( rust_mysql_rollback => ['RustMysqlConn', 'Error*'] => 'bool' );
+$ffi->attach( rust_mysql_in_transaction => ['RustMysqlConn'] => 'bool' );
 
 
 
-push @{ $EXPORT_TAGS{all} }, 'rust_mysql_connect', 'rust_mysql_disconnect', 'rust_mysql_prepare', 'rust_mysql_statement_destroy', 'rust_mysql_begin_work', 'rust_mysql_commit', 'rust_mysql_rollback';
+push @{ $EXPORT_TAGS{all} }, 'rust_mysql_connect', 'rust_mysql_disconnect', 'rust_mysql_prepare', 'rust_mysql_statement_destroy', 'rust_mysql_begin_work', 'rust_mysql_commit', 'rust_mysql_rollback', 'rust_mysql_in_transaction';
 
 1; 
