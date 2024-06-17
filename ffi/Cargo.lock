@@ -662,7 +662,7 @@ dependencies = [
 [[package]]
 name = "plbindgen_types"
 version = "0.1.0"
-source = "git+file:///Users/dylan/Git/dylanwh/plbindgen_types/#6a2a38fb104400fc1ed6ebd01c98388e5c92d62d"
+source = "git+https://github.com/dylanwh/plbindgen_types/#6a2a38fb104400fc1ed6ebd01c98388e5c92d62d"
 
 [[package]]
 name = "ppv-lite86"

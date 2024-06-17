@@ -8,6 +8,7 @@ use plbindgen_macros::{export, opaque, record};
 use plbindgen_types::{array, string};
 
 
+#[repr(C)]
 pub enum ErrorCode {
     NoError = 0,
     Utf8Error = 1,

@@ -30,6 +30,16 @@ my $ffi = FFI::Platypus->new( api => 2, lang => 'Rust' );
 $ffi->bundle;
 
 
+$ffi->type(enum => 'ErrorCode');
+
+use constant NoError => 0;
+use constant Utf8Error => 1;
+use constant UrlError => 2;
+use constant ConnectionError => 3;
+use constant PrepareError => 4;
+use constant TransactionError => 5;
+push @{ $EXPORT_TAGS{all} }, 'NoError', 'Utf8Error', 'UrlError', 'ConnectionError', 'PrepareError', 'TransactionError';
+
 
 $ffi->type(opaque => 'RustMysqlConn');
 $ffi->type(opaque => 'RustMysqlStatement');
