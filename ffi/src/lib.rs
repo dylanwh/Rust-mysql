@@ -150,7 +150,10 @@ impl ErrorCode {
 /// # Safety
 /// When calling this method, the connection must be a pointer returned by rust_mysql_connect
 #[no_mangle]
-pub unsafe extern "C" fn rust_mysql_begin_work(conn: *mut RustMysqlConn, error: *mut Error) -> bool {
+pub unsafe extern "C" fn rust_mysql_begin_work(
+    conn: *mut RustMysqlConn,
+    error: *mut Error,
+) -> bool {
     use ErrorCode::*;
 
     if error.is_null() {
