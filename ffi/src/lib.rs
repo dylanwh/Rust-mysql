@@ -193,7 +193,7 @@ pub unsafe extern "C" fn rust_mysql_rollback(conn: *mut RustMysqlConn, error: *m
 
 #[allow(unused)]
 fn dsn_to_url(dsn: &str, user: &str, password: &str) -> String {
-    let dsn = dsn.strip_prefix("dbi:rmysql:").unwrap_or(dsn);
+    let dsn = dsn.strip_prefix("dbi:rust_mysql:").unwrap_or(dsn);
     let mut database = None;
     let mut host = "localhost";
     let mut port = None;
