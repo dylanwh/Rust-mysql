@@ -9,6 +9,7 @@ crate-type=["cdylib"]
 [dependencies]
 flate2 = "1.0.30"
 mysql = { version = "25.0.1", default-features = false, features = ["rustls", "webpki", "minimal-rust", "webpki-roots", "rustls-tls"] }
+mysql_common = "0.32.4"
 plbindgen_macros = { git = "https://github.com/dylanwh/plbindgen_macros", version = "0.1.0" }
 plbindgen_types = { git = "https://github.com/dylanwh/plbindgen_types/", version = "0.1.0" }
 rustls = "0.23.9"

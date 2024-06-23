@@ -1,9 +1,10 @@
 // expose the rust mysql crate as a C API
 
-use std::ffi::{c_char, CStr};
+use std::ffi::{c_char, CStr, CString};
 
-use mysql::{params, prelude::Queryable, Conn, Opts, Statement};
+use mysql::{prelude::Queryable, Opts};
 
+use mysql_common::proto::MySerialize;
 use plbindgen_macros::{export, opaque, record};
 use plbindgen_types::{array, string};
 
@@ -25,26 +26,25 @@ pub struct Error {
 }
 
 #[opaque]
-pub struct RustMysqlConn {
-    conn: Conn,
+pub struct Conn {
+    conn: mysql::Conn,
     txn: Option<mysql::Transaction<'static>>,
 }
 
-#[allow(dead_code)]
 #[opaque]
-pub struct RustMysqlStatement(Statement);
+pub type Statement = mysql::Statement;
 
 /// Connect to a MySQL database
 ///
 /// # Safety
 /// All input pointers must be valid C strings
 #[export]
-unsafe fn rust_mysql_connect(
+pub unsafe fn rust_mysql_conn_new(
     dsn: string,
     user: string,
     password: string,
     error: *mut Error,
-) -> *mut RustMysqlConn {
+) -> *mut Conn {
     use ErrorCode::*;
 
     if error.is_null() {
@@ -66,21 +66,21 @@ unsafe fn rust_mysql_connect(
     let Some(opts) = UrlError.check(Opts::from_url(&url), error) else {
         return std::ptr::null_mut();
     };
-    let Some(conn) = ConnectionError.check(Conn::new(opts), error) else {
+    let Some(conn) = ConnectionError.check(mysql::Conn::new(opts), error) else {
         return std::ptr::null_mut();
     };
 
-    Box::into_raw(Box::new(RustMysqlConn { conn, txn: None }))
+    Box::into_raw(Box::new(Conn { conn, txn: None }))
 }
 
 /// Disconnect from a MySQL database
 /// # Safety
 /// The pointer must be valid
 #[export]
-unsafe fn rust_mysql_disconnect(conn: *mut RustMysqlConn) {
+pub unsafe fn rust_mysql_conn_drop(conn: *mut Conn) {
     if !conn.is_null() {
         let ptr = Box::from_raw(conn);
-        let RustMysqlConn { conn, txn } = *ptr;
+        let Conn { conn, txn } = *ptr;
         drop(txn);
         drop(conn);
     }
@@ -90,11 +90,11 @@ unsafe fn rust_mysql_disconnect(conn: *mut RustMysqlConn) {
 /// # Safety
 /// All input pointers must be valid
 #[export]
-unsafe fn rust_mysql_prepare(
-    conn: *mut RustMysqlConn,
+pub unsafe fn rust_mysql_conn_prepare(
+    conn: *mut Conn,
     query: string,
     error: *mut Error,
-) -> *mut RustMysqlStatement {
+) -> *mut Statement {
     use ErrorCode::*;
 
     if error.is_null() {
@@ -102,7 +102,7 @@ unsafe fn rust_mysql_prepare(
         return std::ptr::null_mut();
     }
 
-    let Some(RustMysqlConn { conn, txn: _ }) = conn.as_mut() else {
+    let Some(Conn { conn, txn: _ }) = conn.as_mut() else {
         ConnectionError.set(error, "null pointer");
         return std::ptr::null_mut();
     };
@@ -114,31 +114,56 @@ unsafe fn rust_mysql_prepare(
         return std::ptr::null_mut();
     };
 
-    Box::into_raw(Box::new(RustMysqlStatement(statement)))
+    Box::into_raw(Box::new(statement))
 }
 
-/// Execute a statement
-/// # Safety
-/// All input pointers must be valid
+#[opaque]
+pub type Columns = Vec<mysql::Column>;
+
 #[export]
-unsafe fn rust_mysql_execute(
-    sth: *mut RustMysqlStatement,
-    params: array<string>,
-    params_len: usize,
-    error: *mut Error,
-){
-    let x = params;
-    println!("{:?}", x);
+pub unsafe fn rust_mysql_statement_columns(statement: *mut Statement) -> *mut Columns {
+    let statement = statement.as_ref().unwrap();
+    let columns = statement.columns().to_vec();
 
-    todo!()
+    Box::into_raw(Box::new(columns))
 }
 
-/// free a statement
+
+#[export]
+pub unsafe fn rust_mysql_columns_len(columns: *const Columns) -> usize {
+    let columns = columns.as_ref().unwrap();
+    columns.len()
+}
+
+#[export]
+pub unsafe fn rust_mysql_columns_names(columns: *const Columns) -> array<string> {
+    let columns = columns.as_ref().unwrap();
+    let mut result: Vec<string> = vec![];
+    for column in columns.iter() {
+        let mut name = column.name_ref().to_vec();
+        name.push(0);
+        let ser = CString::from_vec_with_nul(name).unwrap().into_raw();
+
+        result.push(ser);
+    }
+
+    Box::into_raw(result.into_boxed_slice()) as array<string>
+}
+
+
+#[export]
+pub unsafe fn rust_mysql_columns_drop(columns: *mut Columns) {
+    if !columns.is_null() {
+        drop(Box::from_raw(columns));
+    }
+}
+
+/// free a statemens
 ///
 /// # Safety
 /// The pointer must be valid and must not be used after this function is called
 #[export]
-unsafe fn rust_mysql_statement_destroy(statement: *mut RustMysqlStatement) {
+pub unsafe fn rust_mysql_statement_drop(statement: *mut Statement) {
     if !statement.is_null() {
         drop(Box::from_raw(statement));
     }
@@ -173,8 +198,8 @@ impl ErrorCode {
 /// # Safety
 /// When calling this method, the connection must be a pointer returned by rust_mysql_connect
 #[export]
-unsafe fn rust_mysql_begin_work(
-    conn: *mut RustMysqlConn,
+pub unsafe fn rust_mysql_conn_start_transaction(
+    conn: *mut Conn,
     error: *mut Error,
 ) -> bool {
     use ErrorCode::*;
@@ -201,7 +226,7 @@ unsafe fn rust_mysql_begin_work(
 /// # Safety
 /// When calling this method, the connection must be a pointer returned by rust_mysql_connect
 #[export]
-unsafe fn rust_mysql_commit(conn: *mut RustMysqlConn, error: *mut Error) -> bool {
+pub unsafe fn rust_mysql_conn_commit(conn: *mut Conn, error: *mut Error) -> bool {
     use ErrorCode::*;
 
     if error.is_null() {
@@ -224,7 +249,7 @@ unsafe fn rust_mysql_commit(conn: *mut RustMysqlConn, error: *mut Error) -> bool
 /// # Safety
 /// When calling this method, the connection must be a pointer returned by rust_mysql_connect
 #[export]
-unsafe fn rust_mysql_rollback(conn: *mut RustMysqlConn, error: *mut Error) -> bool {
+pub unsafe fn rust_mysql_conn_rollback(conn: *mut Conn, error: *mut Error) -> bool {
     use ErrorCode::*;
 
     if error.is_null() {
@@ -247,7 +272,7 @@ unsafe fn rust_mysql_rollback(conn: *mut RustMysqlConn, error: *mut Error) -> bo
 /// # Safety
 /// When calling this method, the connection must be a pointer returned by rust_mysql_connect
 #[export]
-unsafe fn rust_mysql_in_transaction(conn: *mut RustMysqlConn) -> bool {
+pub unsafe fn rust_mysyql_conn_in_txn(conn: *mut Conn) -> bool {
     conn.as_ref().map_or(false, |ch| ch.txn.is_some())
 }
 

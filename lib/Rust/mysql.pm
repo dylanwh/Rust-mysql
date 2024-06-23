@@ -23,9 +23,6 @@ BEGIN {
 
 our $VERSION = '0.1.0';
 
-use Rust::mysql::Error;
-
-
 my $ffi = FFI::Platypus->new( api => 2, lang => 'Rust' );
 $ffi->bundle;
 
@@ -41,26 +38,32 @@ use constant TransactionError => 5;
 push @{ $EXPORT_TAGS{all} }, 'NoError', 'Utf8Error', 'UrlError', 'ConnectionError', 'PrepareError', 'TransactionError';
 
 
-$ffi->type(opaque => 'RustMysqlConn');
-$ffi->type(opaque => 'RustMysqlStatement');
+$ffi->type(opaque => 'Conn');
+$ffi->type(opaque => 'Statement');
+$ffi->type(opaque => 'Columns');
 
+
+use Rust::mysql::Error;
 
 Rust::mysql::Error->init_record_layout($ffi);
 $ffi->type("record(Rust::mysql::Error)" => 'Error');
 
 
-$ffi->attach( rust_mysql_connect => ['string', 'string', 'string', 'Error*'] => 'RustMysqlConn' );
-$ffi->attach( rust_mysql_disconnect => ['RustMysqlConn'] => 'void' );
-$ffi->attach( rust_mysql_prepare => ['RustMysqlConn', 'string', 'Error*'] => 'RustMysqlStatement' );
-$ffi->attach( rust_mysql_execute => ['RustMysqlStatement', 'string[]', 'usize', 'Error*'] => 'void' );
-$ffi->attach( rust_mysql_statement_destroy => ['RustMysqlStatement'] => 'void' );
-$ffi->attach( rust_mysql_begin_work => ['RustMysqlConn', 'Error*'] => 'bool' );
-$ffi->attach( rust_mysql_commit => ['RustMysqlConn', 'Error*'] => 'bool' );
-$ffi->attach( rust_mysql_rollback => ['RustMysqlConn', 'Error*'] => 'bool' );
-$ffi->attach( rust_mysql_in_transaction => ['RustMysqlConn'] => 'bool' );
+$ffi->attach( rust_mysql_conn_new => ['string', 'string', 'string', 'Error*'] => 'Conn' );
+$ffi->attach( rust_mysql_conn_drop => ['Conn'] => 'void' );
+$ffi->attach( rust_mysql_conn_prepare => ['Conn', 'string', 'Error*'] => 'Statement' );
+$ffi->attach( rust_mysql_statement_columns => ['Statement'] => 'Columns' );
+$ffi->attach( rust_mysql_columns_len => ['Columns'] => 'usize' );
+$ffi->attach( rust_mysql_columns_names => ['Columns'] => 'string[]' );
+$ffi->attach( rust_mysql_columns_drop => ['Columns'] => 'void' );
+$ffi->attach( rust_mysql_statement_drop => ['Statement'] => 'void' );
+$ffi->attach( rust_mysql_conn_start_transaction => ['Conn', 'Error*'] => 'bool' );
+$ffi->attach( rust_mysql_conn_commit => ['Conn', 'Error*'] => 'bool' );
+$ffi->attach( rust_mysql_conn_rollback => ['Conn', 'Error*'] => 'bool' );
+$ffi->attach( rust_mysyql_conn_in_txn => ['Conn'] => 'bool' );
 
 
 
-push @{ $EXPORT_TAGS{all} }, 'rust_mysql_connect', 'rust_mysql_disconnect', 'rust_mysql_prepare', 'rust_mysql_execute', 'rust_mysql_statement_destroy', 'rust_mysql_begin_work', 'rust_mysql_commit', 'rust_mysql_rollback', 'rust_mysql_in_transaction';
+push @{ $EXPORT_TAGS{all} }, 'rust_mysql_conn_new', 'rust_mysql_conn_drop', 'rust_mysql_conn_prepare', 'rust_mysql_statement_columns', 'rust_mysql_columns_len', 'rust_mysql_columns_names', 'rust_mysql_columns_drop', 'rust_mysql_statement_drop', 'rust_mysql_conn_start_transaction', 'rust_mysql_conn_commit', 'rust_mysql_conn_rollback', 'rust_mysyql_conn_in_txn';
 
 1; 

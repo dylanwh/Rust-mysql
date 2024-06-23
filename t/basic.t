@@ -11,20 +11,27 @@ my $pass = $ENV{MYSQL_PASS};
 plan skip_all => "no database to connect to" unless $dsn;
 
 my $err = Rust::mysql::Error->new();
-my $c = rust_mysql_connect($dsn, $user, $pass, $err);
+my $c = rust_mysql_conn_new($dsn, $user, $pass, $err);
 
 is($err->code, NoError, "no error connecting");
 ok($c, "connected");
 diag $c;
 
-my $statement = rust_mysql_prepare($c, "SELECT now()", undef, $err);
+my $statement = rust_mysql_conn_prepare($c, "SELECT now(), ?", $err);
 is($err->code, NoError, "no error preparing");
 diag $err->message;
 
-rust_mysql_statement_destroy($statement);
+my $columns = rust_mysql_statement_columns($statement);
+my $len  = rust_mysql_columns_len($columns);
+is($len, 2, "two columns");
+use Data::Dumper;
+diag Dumper(rust_mysql_columns_names($columns));
 
-rust_mysql_disconnect($c);
+rust_mysql_columns_drop($columns);
 
+rust_mysql_statement_drop($statement);
+
+rust_mysql_conn_drop($c);
 
 done_testing;
 
