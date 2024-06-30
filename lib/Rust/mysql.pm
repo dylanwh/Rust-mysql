@@ -60,10 +60,10 @@ $ffi->attach( rust_mysql_statement_drop => ['Statement'] => 'void' );
 $ffi->attach( rust_mysql_conn_start_transaction => ['Conn', 'Error*'] => 'bool' );
 $ffi->attach( rust_mysql_conn_commit => ['Conn', 'Error*'] => 'bool' );
 $ffi->attach( rust_mysql_conn_rollback => ['Conn', 'Error*'] => 'bool' );
-$ffi->attach( rust_mysyql_conn_in_txn => ['Conn'] => 'bool' );
+$ffi->attach( rust_mysql_conn_in_txn => ['Conn'] => 'bool' );
 
 
 
-push @{ $EXPORT_TAGS{all} }, 'rust_mysql_conn_new', 'rust_mysql_conn_drop', 'rust_mysql_conn_prepare', 'rust_mysql_statement_columns', 'rust_mysql_columns_len', 'rust_mysql_columns_names', 'rust_mysql_columns_drop', 'rust_mysql_statement_drop', 'rust_mysql_conn_start_transaction', 'rust_mysql_conn_commit', 'rust_mysql_conn_rollback', 'rust_mysyql_conn_in_txn';
+push @{ $EXPORT_TAGS{all} }, 'rust_mysql_conn_new', 'rust_mysql_conn_drop', 'rust_mysql_conn_prepare', 'rust_mysql_statement_columns', 'rust_mysql_columns_len', 'rust_mysql_columns_names', 'rust_mysql_columns_drop', 'rust_mysql_statement_drop', 'rust_mysql_conn_start_transaction', 'rust_mysql_conn_commit', 'rust_mysql_conn_rollback', 'rust_mysql_conn_in_txn';
 
 1; 

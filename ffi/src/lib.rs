@@ -272,7 +272,7 @@ pub unsafe fn rust_mysql_conn_rollback(conn: *mut Conn, error: *mut Error) -> bo
 /// # Safety
 /// When calling this method, the connection must be a pointer returned by rust_mysql_connect
 #[export]
-pub unsafe fn rust_mysyql_conn_in_txn(conn: *mut Conn) -> bool {
+pub unsafe fn rust_mysql_conn_in_txn(conn: *mut Conn) -> bool {
     conn.as_ref().map_or(false, |ch| ch.txn.is_some())
 }
 
